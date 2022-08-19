@@ -148,7 +148,6 @@ journals <- data$output[
   dcast(ID_VALOR_LISTA ~ i, value.var = c("ISSN", "TITLE"))
 setcolorder(journals, 
             c("ID_VALOR_LISTA", "ISSN_1", "TITLE_1", "ISSN_2", "TITLE_2"))
-journals[, id := .I]
 
 # Data about those postgraduate programs at each year
 programs_years <- data$programs[
@@ -173,9 +172,6 @@ areas <- programs_years[
   , .(CD_AREA_AVALIACAO, NM_AREA_AVALIACAO)
 ][
   , last(.SD), keyby = CD_AREA_AVALIACAO
-][
-  # There's no CD_AREA_AVALIACAO 43
-  , id := .I
 ]
 
 rm(data)
