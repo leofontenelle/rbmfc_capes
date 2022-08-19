@@ -159,19 +159,13 @@ programs_years <- data$programs[
 stopifnot(anyDuplicated(programs_years[, .(AN_BASE, CD_PROGRAMA_IES)]) == 0)
 
 # Timeless data about postgraduate programs
-programs <- programs_years[
-  , .(SG_ENTIDADE_ENSINO, CD_PROGRAMA_IES, NM_PROGRAMA_IES)
-][
-  , last(.SD), keyby = CD_PROGRAMA_IES
-][
-  , id := .I
-]
+programs <- programs_years[, last(.SD), keyby = CD_PROGRAMA_IES, .SDcols = c(
+  "SG_ENTIDADE_ENSINO", "NM_PROGRAMA_IES"
+)]
 
 # Timeless data about evaluation areas of the postgraduate programs
 areas <- programs_years[
-  , .(CD_AREA_AVALIACAO, NM_AREA_AVALIACAO)
-][
-  , last(.SD), keyby = CD_AREA_AVALIACAO
+  , last(NM_AREA_AVALIACAO), keyby = CD_AREA_AVALIACAO
 ]
 
 rm(data)
@@ -190,7 +184,7 @@ table_areas <- programs_years[
 table_areas[, prop_within_journal := N / sum(N), by = ID_VALOR_LISTA]
 setorder(table_areas, ID_VALOR_LISTA, -prop_within_journal)
 table_areas[, cum_prop_within_journal := cumsum(prop_within_journal), by = ID_VALOR_LISTA]
-setkey(table_areas, ID_VALOR_LISTA, CD_AREA_AVALIACAO, NM_AREA_AVALIACAO)
+setkey(table_areas, ID_VALOR_LISTA, CD_AREA_AVALIACAO)
 table_areas[, prop_within_area := N / sum(N), by = CD_AREA_AVALIACAO]
 table_areas[, c(journal_cols) :=  journals[
   .(table_areas$ID_VALOR_LISTA), 
@@ -202,14 +196,17 @@ table_areas[, c(journal_cols) :=  journals[
 table_programs <- programs_years[
   output, , on = .(AN_BASE, CD_PROGRAMA_IES)
 ][
-  , 
-  .N, 
-  keyby = .(ID_VALOR_LISTA, SG_ENTIDADE_ENSINO, CD_PROGRAMA_IES, NM_PROGRAMA_IES)
+  , N := .N, keyby = .(ID_VALOR_LISTA, CD_PROGRAMA_IES)
+][
+  ,
+  last(.SD), 
+  keyby = .(ID_VALOR_LISTA, CD_PROGRAMA_IES),
+  .SDcols = c("SG_ENTIDADE_ENSINO", "NM_PROGRAMA_IES", "N")
 ]
 table_programs[, prop_within_journal := N / sum(N), by = ID_VALOR_LISTA]
 setorder(table_programs, ID_VALOR_LISTA, -prop_within_journal)
 table_programs[, cum_prop_within_journal := cumsum(prop_within_journal), by = ID_VALOR_LISTA]
-setkey(table_programs, ID_VALOR_LISTA, SG_ENTIDADE_ENSINO, CD_PROGRAMA_IES, NM_PROGRAMA_IES)
+setkey(table_programs, ID_VALOR_LISTA, CD_PROGRAMA_IES)
 table_programs[, prop_within_program := N / sum(N), by = CD_PROGRAMA_IES]
 table_programs[, c(journal_cols) :=  journals[
   .(table_programs$ID_VALOR_LISTA), 
@@ -248,8 +245,8 @@ for (ivl in focal_journal_ids) {
   stopifnot(length(issn) == 1)
   table_areas[.(ID_VALOR_LISTA = ivl)] |> 
     subset(select = areas_cols) |> 
-    setorder(-N) |> 
-    fwrite(file.path("data", sprintf("%s_evaluation_areas.csv", issn)))
+     setorder(-N) |> 
+     fwrite(file.path("data", sprintf("%s_evaluation_areas.csv", issn)))
   table_programs[.(ID_VALOR_LISTA = ivl)] |> 
     subset(select = programs_cols) |>
     setorder(-N) |> 
@@ -259,3 +256,14 @@ message("When you open the CSV files in a spreasheet application, ",
         "choose the Windows Western character encoding (code page 1252), ",
         "and the English locale / dots as decimal sepparators. ", 
         "Format the proportion columns as percentages." )
+
+# Paragraph 1 of results ----
+
+cat("Postgraduate programs with any output:", 
+    uniqueN(programs$CD_PROGRAMA_IES), "\n")
+cat("Unique, complete journal articles:", 
+    uniqueN(output$ID_ADD_PRODUCAO_INTELECTUAL), "\n")
+cat("All complete journal articles: ", 
+  length(output$ID_ADD_PRODUCAO_INTELECTUAL), "\n") # The same
+cat("'Unique' journals:",
+    uniqueN(journals$ID_VALOR_LISTA), "\n")
