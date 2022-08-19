@@ -153,14 +153,14 @@ setcolorder(journals,
 programs_years <- data$programs[
   unique(output[, .(AN_BASE, CD_PROGRAMA_IES)]),
   .(AN_BASE, SG_ENTIDADE_ENSINO, CD_PROGRAMA_IES, NM_PROGRAMA_IES, 
-    CD_AREA_AVALIACAO, NM_AREA_AVALIACAO),
+    CD_AREA_AVALIACAO, NM_AREA_AVALIACAO, NM_MODALIDADE_PROGRAMA),
   key = .(AN_BASE, CD_PROGRAMA_IES)
 ]
 stopifnot(anyDuplicated(programs_years[, .(AN_BASE, CD_PROGRAMA_IES)]) == 0)
 
 # Timeless data about postgraduate programs
 programs <- programs_years[, last(.SD), keyby = CD_PROGRAMA_IES, .SDcols = c(
-  "SG_ENTIDADE_ENSINO", "NM_PROGRAMA_IES"
+  "SG_ENTIDADE_ENSINO", "NM_PROGRAMA_IES", "NM_MODALIDADE_PROGRAMA"
 )]
 
 # Timeless data about evaluation areas of the postgraduate programs
@@ -201,7 +201,8 @@ table_programs <- programs_years[
   ,
   last(.SD), 
   keyby = .(ID_VALOR_LISTA, CD_PROGRAMA_IES),
-  .SDcols = c("SG_ENTIDADE_ENSINO", "NM_PROGRAMA_IES", "N")
+  .SDcols = c("SG_ENTIDADE_ENSINO", "NM_PROGRAMA_IES", 
+              "NM_MODALIDADE_PROGRAMA", "N")
 ]
 table_programs[, prop_within_journal := N / sum(N), by = ID_VALOR_LISTA]
 setorder(table_programs, ID_VALOR_LISTA, -prop_within_journal)
@@ -233,6 +234,7 @@ programs_cols <- c(
   "SG_ENTIDADE_ENSINO",
   "CD_PROGRAMA_IES", 
   "NM_PROGRAMA_IES", 
+  "NM_MODALIDADE_PROGRAMA",
   "N", 
   "prop_within_journal", 
   "cum_prop_within_journal",
