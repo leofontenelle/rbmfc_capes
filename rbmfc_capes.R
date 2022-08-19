@@ -152,20 +152,15 @@ setcolorder(journals,
 # Data about those postgraduate programs at each year
 programs_years <- data$programs[
   unique(output[, .(AN_BASE, CD_PROGRAMA_IES)]),
-  .(AN_BASE, SG_ENTIDADE_ENSINO, CD_PROGRAMA_IES, NM_PROGRAMA_IES, 
-    CD_AREA_AVALIACAO, NM_AREA_AVALIACAO, NM_MODALIDADE_PROGRAMA),
+  .(AN_BASE, SG_ENTIDADE_ENSINO, IN_REDE, CD_PROGRAMA_IES, NM_PROGRAMA_IES, 
+    CD_AREA_AVALIACAO, NM_AREA_AVALIACAO, NM_MODALIDADE_PROGRAMA, NM_REGIAO),
   key = .(AN_BASE, CD_PROGRAMA_IES)
 ]
 stopifnot(anyDuplicated(programs_years[, .(AN_BASE, CD_PROGRAMA_IES)]) == 0)
 
 # Timeless data about postgraduate programs
-programs <- programs_years[, last(.SD), keyby = CD_PROGRAMA_IES, .SDcols = c(
-  "SG_ENTIDADE_ENSINO", "NM_PROGRAMA_IES", "NM_MODALIDADE_PROGRAMA"
-)]
-
-# Timeless data about evaluation areas of the postgraduate programs
-areas <- programs_years[
-  , last(NM_AREA_AVALIACAO), keyby = CD_AREA_AVALIACAO
+programs <- programs_years[
+  , last(.SD), keyby = CD_PROGRAMA_IES, .SDcols = -c("AN_BASE")
 ]
 
 rm(data)
@@ -175,34 +170,18 @@ rm(data)
 
 journal_cols <- c("ISSN_1", "TITLE_1", "ISSN_2", "TITLE_2")
 
-# Aggregate over evaluation areas
-table_areas <- programs_years[
-  output, , on = .(AN_BASE, CD_PROGRAMA_IES)
-][
-  , .N, keyby = .(ID_VALOR_LISTA, CD_AREA_AVALIACAO, NM_AREA_AVALIACAO)
-]
-table_areas[, prop_within_journal := N / sum(N), by = ID_VALOR_LISTA]
-setorder(table_areas, ID_VALOR_LISTA, -prop_within_journal)
-table_areas[, cum_prop_within_journal := cumsum(prop_within_journal), by = ID_VALOR_LISTA]
-setkey(table_areas, ID_VALOR_LISTA, CD_AREA_AVALIACAO)
-table_areas[, prop_within_area := N / sum(N), by = CD_AREA_AVALIACAO]
-table_areas[, c(journal_cols) :=  journals[
-  .(table_areas$ID_VALOR_LISTA), 
-  .SD, 
-  .SDcols = c(journal_cols)
-]]
-
 # Aggregate over individual postgraduate programs
-table_programs <- programs_years[
-  output, , on = .(AN_BASE, CD_PROGRAMA_IES)
+table_programs <- programs[
+  output[, .(ID_VALOR_LISTA, CD_PROGRAMA_IES)], , on = "CD_PROGRAMA_IES"
 ][
   , N := .N, keyby = .(ID_VALOR_LISTA, CD_PROGRAMA_IES)
 ][
   ,
   last(.SD), 
   keyby = .(ID_VALOR_LISTA, CD_PROGRAMA_IES),
-  .SDcols = c("SG_ENTIDADE_ENSINO", "NM_PROGRAMA_IES", 
-              "NM_MODALIDADE_PROGRAMA", "N")
+  .SDcols = c("SG_ENTIDADE_ENSINO", "IN_REDE", "NM_PROGRAMA_IES", 
+              "NM_MODALIDADE_PROGRAMA", "NM_REGIAO", 
+              "CD_AREA_AVALIACAO", "NM_AREA_AVALIACAO", "N")
 ]
 table_programs[, prop_within_journal := N / sum(N), by = ID_VALOR_LISTA]
 setorder(table_programs, ID_VALOR_LISTA, -prop_within_journal)
@@ -222,19 +201,15 @@ rm(journal_cols)
 
 if (!dir.exists("data")) dir.create("data")
 
-areas_cols <- c(
-  "CD_AREA_AVALIACAO",
-  "NM_AREA_AVALIACAO",
-  "N",
-  "prop_within_journal",
-  "cum_prop_within_journal",
-  "prop_within_area"
-)
 programs_cols <- c(
   "SG_ENTIDADE_ENSINO",
+  "IN_REDE",
   "CD_PROGRAMA_IES", 
   "NM_PROGRAMA_IES", 
   "NM_MODALIDADE_PROGRAMA",
+  "NM_REGIAO",
+  "CD_AREA_AVALIACAO",
+  "NM_AREA_AVALIACAO",
   "N", 
   "prop_within_journal", 
   "cum_prop_within_journal",
@@ -245,14 +220,10 @@ programs_cols <- c(
 for (ivl in focal_journal_ids) {
   issn <- journals[.(ivl), ISSN_1]
   stopifnot(length(issn) == 1)
-  table_areas[.(ID_VALOR_LISTA = ivl)] |> 
-    subset(select = areas_cols) |> 
-     setorder(-N) |> 
-     fwrite(file.path("data", sprintf("%s_evaluation_areas.csv", issn)))
   table_programs[.(ID_VALOR_LISTA = ivl)] |> 
     subset(select = programs_cols) |>
     setorder(-N) |> 
-    fwrite(file.path("data", sprintf("%s_postgraduate_programs.csv", issn)))
+    fwrite(file.path("data", sprintf("%s.csv", issn)))
 }
 message("When you open the CSV files in a spreasheet application, ",
         "choose the Windows Western character encoding (code page 1252), ",
@@ -269,3 +240,9 @@ cat("All complete journal articles: ",
   length(output$ID_ADD_PRODUCAO_INTELECTUAL), "\n") # The same
 cat("'Unique' journals:",
     uniqueN(journals$ID_VALOR_LISTA), "\n")
+cat("Distribution of articles by region\n")
+print(table_programs[
+  , .(N = sum(N)), keyby = NM_REGIAO
+][
+    , prop := N / sum(N)
+    ][])

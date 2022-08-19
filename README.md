@@ -20,10 +20,9 @@ with other versions.
 
 Running the analytic code without changes will create two directories: 
 `data_raw` and `data`. Open data from CAPES will be downloaded into 
-`data_raw`, and tabulated data will be written to `data`. For each 
-journal, there will be two comma-separated values (CSV) files: one about 
-the evaluation areas and another about the individual postgraduate 
-programs.
+`data_raw`, and tabulated data will be written to `data`. There will be 
+one comma-separated values (CSV) file for each journal, named after 
+one of its ISSN.
 
 By default, the analytic code tabulates data for two journals: _Revista 
 Brasileira de Medicina de Família e Comunidade_ (ISSN 2179-7994) and 
