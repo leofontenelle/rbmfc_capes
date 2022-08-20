@@ -66,12 +66,14 @@ data_sources <- data.table(
     "07b5ae25b31e968e01b3a197b3d6ecae", 
     "a6595704a05a2fb7e39aa6ff3536a4aa"
   ),
-  # You're welcome, future me
+  approx.size = c(2, 2, 2, 2, 300), # In megabytes
   webpage = c(
+    # You're welcome, future me
     rep("https://dadosabertos.capes.gov.br/dataset/2017-a-2020-programas-da-pos-graduacao-stricto-sensu-no-brasil", 4),
     "https://dadosabertos.capes.gov.br/dataset/2017-a-2020-detalhes-da-producao-intelectual-bibliografica-de-programas-de-pos-graduacao"
     ),
   dictionary = c(
+    # You're welcome, future me
     rep("https://metadados.capes.gov.br/index.php/catalog/230/datafile/F2", 4),
     "https://metadados.capes.gov.br/index.php/catalog/240/datafile/F6"
   ),
@@ -85,6 +87,13 @@ if (!dir.exists("data_raw")) dir.create("data_raw")
 lapply(data_sources$name, function(nm) {
   path <- file.path("data_raw", data_sources[nm, filename])
   if (!isTRUE(data_sources[nm, md5sum] == tools::md5sum(path))) {
+    # The last file is too large do download with the default timeout
+    old.opt <- options(timeout = max(getOption("timeout"), 
+                                     data_sources[nm, approx.size] * 10))
+    on.exit(options(old.opt))
+    message(sprintf("It may take up to %d minutes to download file '%s'",
+                    ceiling(getOption("timeout") / 60),
+                    data_sources[nm, filename]))
     # Downloading in binary mode to avoid messing with line endings
     download.file(data_sources[nm, url], path, mode = "wb")
   }
