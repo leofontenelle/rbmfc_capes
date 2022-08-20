@@ -249,9 +249,16 @@ cat("All complete journal articles: ",
   length(output$ID_ADD_PRODUCAO_INTELECTUAL), "\n") # The same
 cat("'Unique' journals:",
     uniqueN(journals$ID_VALOR_LISTA), "\n")
-cat("Distribution of articles by region\n")
-print(table_programs[
-  , .(N = sum(N)), keyby = NM_REGIAO
-][
-    , prop := N / sum(N)
-    ][])
+cat("Distribution of articles by modality of the postgraduate program:\n")
+table_programs[, .(N = sum(N)), keyby = NM_MODALIDADE_PROGRAMA][
+  , prop := N / sum(N)][] |> 
+  print()
+cat("Distribution of articles by whether the program is networked:\n")
+table_programs[, .(N = sum(N)), keyby = IN_REDE][
+  , prop := N / sum(N)][] |> 
+  print()
+cat("Distribution of articles by region (non-networked programs):\n")
+table_programs[IN_REDE == "NÃO", .(N = sum(N)), keyby = NM_REGIAO][
+  , prop := N / sum(N)][] |> 
+  print()
+
